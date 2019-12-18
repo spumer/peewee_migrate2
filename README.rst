@@ -35,7 +35,7 @@ It's a fork of original https://github.com/klen/peewee_migrate. Thank ``klen`` f
 
 But ``klen`` don't support project for a long time.
 
-To fix critical project was forked and development continued.
+To fix critical issues project was forked and development continued.
 
 All previous compatibilities will be preserved.
 
@@ -56,9 +56,15 @@ For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``.
 Installation
 =============
 
+To reduce code changes Python package name don't changed. Only name on PyPI.
+
+If you have installed previous version please remove it before using pip: ::
+
+    pip uninstall peewee_migrate
+
 **Peewee Migrate** should be installed using pip: ::
 
-    pip install peewee_migrate
+    pip install peewee_migrate2
 
 .. _usage:
 
@@ -155,14 +161,14 @@ Bug tracker
 
 If you have any suggestions, bug reports or
 annoyances please report them to the issue tracker
-at https://github.com/klen/peewee_migrate/issues
+at https://github.com/spumer/peewee_migrate2/issues
 
 .. _contributing:
 
 Contributing
 ============
 
-Development of starter happens at github: https://github.com/klen/peewee_migrate
+Development of starter happens at github: https://github.com/spumer/peewee_migrate2
 
 
 Contributors
