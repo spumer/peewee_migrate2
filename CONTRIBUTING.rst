@@ -13,7 +13,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://github.com/klen/peewee_migrate/issues.
+Report bugs at https://github.com/spumer/peewee_migrate2/issues.
 
 If you are reporting a bug, please include:
 
@@ -43,7 +43,7 @@ articles, and such.
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://github.com/klen/peewee_migrate/issues.
+The best way to send feedback is to file an issue at https://github.com/spumer/peewee_migrate2/issues.
 
 If you are proposing a feature:
 
@@ -55,10 +55,10 @@ If you are proposing a feature:
 Get Started!
 ------------
 
-Ready to contribute? Here's how to set up `peewee_migrate` for
+Ready to contribute? Here's how to set up `peewee_migrate2` for
 local development.
 
-1. Fork_ the `peewee_migrate` repo on GitHub.
+1. Fork_ the `peewee_migrate2` repo on GitHub.
 2. Clone your fork locally::
 
     $ git clone git@github.com:your_name_here/peewee_migrate.git
@@ -96,7 +96,7 @@ Before you submit a pull request, check that it meets these guidelines:
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
 3. The pull request should work for Python 2.6, 2.7, and 3.3, and for PyPy.
-   Check https://travis-ci.org/klen/peewee_migrate 
+   Check https://travis-ci.org/spumer/peewee_migrate2
    under pull requests for active pull requests or run the ``tox`` command and
    make sure that the tests pass for all supported Python versions.
 
