@@ -48,7 +48,11 @@ def get_router(directory, database, verbose=0):
 
 @click.group()
 def cli():
-    pass
+    # allow correctly running from any directory
+    # emulate `python -m ...` behaviour
+    cwd = os.getcwd()
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
 
 
 @cli.command()
