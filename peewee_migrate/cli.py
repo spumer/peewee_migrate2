@@ -1,4 +1,5 @@
 """ CLI integration. """
+import datetime
 import os
 import re
 import sys
@@ -53,6 +54,42 @@ def cli():
     cwd = os.getcwd()
     if cwd not in sys.path:
         sys.path.insert(0, cwd)
+
+
+@cli.command()
+@click.option(
+    '--name', default=None, help=(
+        'Migration file name. '
+        "By default will be 'auto_YYYYmmdd_HHMM'"
+    ),
+)
+@click.option(
+    '--auto', default=True, is_flag=True, help=(
+        'Scan sources and create db migrations automatically. '
+        'Supports autodiscovery.'
+    ),
+)
+@click.option(
+    '--auto-source', default=False, help=(
+        "Set to python module path for changes autoscan (e.g. 'package.models'). "
+        'Current directory will be recursively scanned by default.'
+    ),
+)
+@click.option('--database', default=None, help='Database connection')
+@click.option('--directory', default='migrations', help='Directory where migrations are stored')
+@click.option('-v', '--verbose', count=True)
+def makemigrations(name=None, database=None, auto=True, auto_source=False, directory=None, verbose=None):
+    """Create a migration automatically
+
+    Similar to `create` command, but `auto` is True by default, and `name` not required
+    """
+    if name is None:
+        name = 'auto_{0:%Y%m%d_%H%M}'.format(datetime.datetime.now())
+
+    router = get_router(directory, database, verbose)
+    if auto and auto_source:
+        auto = auto_source
+    router.create(name, auto=auto)
 
 
 @cli.command()

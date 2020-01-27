@@ -121,6 +121,30 @@ Run migrations: ::
         -v, --verbose
         --help            Show this message and exit.
 
+Auto create migration: ::
+
+    $ pw_migrate makemigrations --help
+
+    Usage: pw_migrate makemigrations [OPTIONS]
+
+      Create a migration automatically
+
+      Similar to `create` command, but `auto` is True by default, and `name` not
+      required
+
+    Options:
+        --name TEXT         Migration file name. By default will be
+                          'auto_YYYYmmdd_HHMM'
+        --auto              Scan sources and create db migrations automatically.
+                          Supports autodiscovery.
+        --auto-source TEXT  Set to python module path for changes autoscan (e.g.
+                          'package.models'). Current directory will be recursively
+                          scanned by default.
+        --database TEXT     Database connection
+        --directory TEXT    Directory where migrations are stored
+        -v, --verbose
+        --help              Show this message and exit.
+
 From python
 -----------
 ::
