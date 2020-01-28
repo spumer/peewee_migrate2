@@ -8,13 +8,13 @@ Peewee Migrate 2 -- A simple migration engine for Peewee
 
 .. _badges:
 
-.. image:: https://travis-ci.org/spumer/peewee_migrate.svg
-    :target: http://travis-ci.org/spumer/peewee_migrate
+.. image:: https://travis-ci.org/spumer/peewee_migrate2.svg
+    :target: http://travis-ci.org/spumer/peewee_migrate2
     :alt: Build Status
 
 
-.. image:: https://coveralls.io/repos/github/spumer/peewee_migrate/badge.svg
-    :target: https://coveralls.io/github/spumer/peewee_migrate
+.. image:: https://coveralls.io/repos/github/spumer/peewee_migrate2/badge.svg
+    :target: https://coveralls.io/github/spumer/peewee_migrate2
     :alt: Coverals
 
 .. image:: http://img.shields.io/pypi/v/peewee_migrate2.svg?style=flat-square
