@@ -43,7 +43,7 @@ All previous compatibilities will be preserved.
 Requirements
 =============
 
-- python 2.7,3.5
+- python >= 3.5
 - peewee >= 3.3.1
 
 Dependency Note
