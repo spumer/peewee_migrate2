@@ -1,5 +1,5 @@
 import peewee as pw
-from collections import Hashable, OrderedDict
+import collections
 from playhouse.reflection import Column as VanilaColumn
 
 
@@ -137,8 +137,8 @@ def diff_many(models1, models2, migrator=None, reverse=False):
         models1 = reversed(models1)
         models2 = reversed(models2)
 
-    models1 = OrderedDict([(m._meta.name, m) for m in models1])
-    models2 = OrderedDict([(m._meta.name, m) for m in models2])
+    models1 = collections.OrderedDict([(m._meta.name, m) for m in models1])
+    models2 = collections.OrderedDict([(m._meta.name, m) for m in models2])
 
     changes = []
 
@@ -223,7 +223,8 @@ def compare_fields(field1, field2, **kwargs):
 def field_to_params(field, **kwargs):
     params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
     if field.default is not None and \
-            not callable(field.default) and isinstance(field.default, Hashable):
+            not callable(field.default) \
+            and isinstance(field.default, collections.Hashable):
         params['default'] = field.default
 
     params['index'] = field.index and not field.unique, field.unique
