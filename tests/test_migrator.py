@@ -1,3 +1,18 @@
+from unittest import mock
+
+import pytest
+
+
+@pytest.fixture()
+def _mock_connection():
+    """Monkey patch psycopg2 connect"""
+    import psycopg2
+    from .mocks import postgres
+
+    with mock.patch.object(psycopg2, 'connect', postgres.MockConnection):
+        yield
+
+
 def test_migrator():
     import peewee as pw
     from playhouse.db_url import connect
@@ -83,7 +98,8 @@ def test_migrator():
     migrator.change_columns(Order, identifier=pw.IntegerField(default=0))
     assert not Order._meta.indexes
 
-def test_migrator_postgres():
+
+def test_migrator_postgres(_mock_connection):
     """
     Ensure change_fields generates queries and
     does not cause exception
@@ -91,11 +107,6 @@ def test_migrator_postgres():
     import peewee as pw
     from playhouse.db_url import connect
     from peewee_migrate import Migrator
-
-    # Monkey patch psycopg2 connect
-    import psycopg2
-    from .mocks import postgres
-    psycopg2.connect = postgres.MockConnection
 
     database = connect('postgres:///fake')
 

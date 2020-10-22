@@ -196,7 +196,7 @@ class BaseRouter(object):
 
         migrator = self.migrator
         self.run_one(name, migrator, False, True)
-        self.logger.warn('Downgraded migration: %s', name)
+        self.logger.warning('Downgraded migration: %s', name)
 
 
 class Router(BaseRouter):
