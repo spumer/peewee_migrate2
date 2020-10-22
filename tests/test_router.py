@@ -5,14 +5,18 @@ import mock
 import peewee as pw
 
 
-def test_router(migrations_dir):
-    from peewee_migrate import MigrateHistory
-    from peewee_migrate.cli import get_router
+def test_router_run_already_applied_ok(router):
+    router.run()
+    assert router.diff == []
 
-    router = get_router(migrations_dir, 'sqlite:///:memory:')
+    with mock.patch('peewee.Database.execute_sql') as execute_sql:
+        router.run_one('002_test', router.migrator, fake=True)
 
-    assert router.database
-    assert isinstance(router.database, pw.Database)
+    assert not execute_sql.called
+
+
+def test_router_todo_diff_done(router, migrations_dir):
+    MigrateHistory = router.model
 
     assert router.todo == ['001_test', '002_test', '003_tespy']
     assert router.done == []
@@ -24,16 +28,12 @@ def test_router(migrations_dir):
 
     MigrateHistory.create(name='001_test')
     assert router.diff == ['002_test', '003_tespy']
-
     MigrateHistory.delete().execute()
 
+
+def test_router_rollback(router):
+    MigrateHistory = router.model
     router.run()
-    assert router.diff == []
-
-    with mock.patch('peewee.Database.execute_sql') as execute_sql:
-        router.run_one('002_test', router.migrator, fake=True)
-
-    assert not execute_sql.called
 
     migrations = MigrateHistory.select()
     assert list(migrations)
@@ -43,21 +43,19 @@ def test_router(migrations_dir):
     assert router.diff == ['003_tespy']
     assert migrations.count() == 2
 
+
+def test_router_merge(router, migrations_dir):
+    MigrateHistory = router.model
+    router.run()
+
     with mock.patch('os.remove') as mocked:
         router.merge()
         assert mocked.call_count == 3
         assert mocked.call_args[0][0] == os.path.join(migrations_dir, '003_tespy.py')
         assert MigrateHistory.select().count() == 1
 
+    # after merge we have new migration, remove it for cleanup purposes
     os.remove(os.path.join(migrations_dir, '001_initial.py'))
-
-    from peewee_migrate.router import load_models
-
-    models = load_models('tests.test_autodiscover')
-    assert models
-
-    models = load_models('tests.test_autodiscover')
-    assert models
 
 
 def test_router_compile(tmpdir):

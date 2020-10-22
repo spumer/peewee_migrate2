@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import typing
 from importlib import import_module
 
 import pkgutil
@@ -38,7 +39,7 @@ class BaseRouter(object):
             raise RuntimeError('Invalid database: %s' % database)
 
     @cached_property
-    def model(self):
+    def model(self) -> typing.Type[MigrateHistory]:
         """Initialize and cache MigrationHistory model."""
         MigrateHistory._meta.database = self.database
         MigrateHistory._meta.table_name = self.migrate_table
