@@ -74,6 +74,15 @@ $(VIRTUAL_ENV): $(CURDIR)/requirements.txt
 test: $(VIRTUAL_ENV)/bin/py.test
 	@py.test -xs tests
 
+.PHONY: upenv
+upenv:
+	docker-compose up -d
+
+.PHONY: fulltest ft
+fulltest ft: upenv
+	POSTGRES_DSN=postgresql://postgres@127.0.0.1:5432/test $(MAKE) test
+
+
 $(VIRTUAL_ENV)/bin/py.test: $(CURDIR)/requirements-tests.txt $(VIRTUAL_ENV) 
 	@$(VIRTUAL_ENV)/bin/pip install -r $(CURDIR)/requirements-tests.txt
 	@touch $(VIRTUAL_ENV)/bin/py.test

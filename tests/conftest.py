@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 import playhouse.db_url
@@ -11,9 +12,15 @@ def migrations_dir():
     return pathlib.Path(__file__).with_name('migrations')
 
 
-@pytest.fixture()
-def database():
-    return playhouse.db_url.connect('sqlite:///:memory:')
+@pytest.fixture(params=['sqlite', 'postgresql'])
+def database(request):
+    if request.param == 'sqlite':
+        return playhouse.db_url.connect('sqlite:///:memory:')
+    else:
+        dsn = os.getenv('POSTGRES_DSN')
+        if not dsn:
+            raise pytest.skip('Postgres not found')
+        return playhouse.db_url.connect(dsn)
 
 
 @pytest.fixture()
