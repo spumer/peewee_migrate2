@@ -10,7 +10,7 @@ def test_router_run_already_applied_ok(router):
     assert router.diff == []
 
     with mock.patch('peewee.Database.execute_sql') as execute_sql:
-        router.run_one('002_test', router.migrator, fake=True)
+        router.run_one('004_test_insert', router.migrator, fake=True)
 
     assert not execute_sql.called
 
@@ -18,16 +18,16 @@ def test_router_run_already_applied_ok(router):
 def test_router_todo_diff_done(router, migrations_dir):
     MigrateHistory = router.model
 
-    assert router.todo == ['001_test', '002_test', '003_tespy']
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_test_insert']
     assert router.done == []
-    assert router.diff == ['001_test', '002_test', '003_tespy']
+    assert router.diff == ['001_test', '002_test', '003_tespy', '004_test_insert']
 
     router.create('new')
-    assert router.todo == ['001_test', '002_test', '003_tespy', '004_new']
-    os.remove(os.path.join(migrations_dir, '004_new.py'))
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_test_insert', '005_new']
+    os.remove(os.path.join(migrations_dir, '005_new.py'))
 
     MigrateHistory.create(name='001_test')
-    assert router.diff == ['002_test', '003_tespy']
+    assert router.diff == ['002_test', '003_tespy', '004_test_insert']
     MigrateHistory.delete().execute()
 
 
@@ -37,10 +37,11 @@ def test_router_rollback(router):
 
     migrations = MigrateHistory.select()
     assert list(migrations)
-    assert migrations.count() == 3
+    assert migrations.count() == 4
 
+    router.rollback('004_test_insert')
     router.rollback('003_tespy')
-    assert router.diff == ['003_tespy']
+    assert router.diff == ['003_tespy', '004_test_insert']
     assert migrations.count() == 2
 
 
@@ -50,8 +51,8 @@ def test_router_merge(router, migrations_dir):
 
     with mock.patch('os.remove') as mocked:
         router.merge()
-        assert mocked.call_count == 3
-        assert mocked.call_args[0][0] == os.path.join(migrations_dir, '003_tespy.py')
+        assert mocked.call_count == 4
+        assert mocked.call_args[0][0] == os.path.join(migrations_dir, '004_test_insert.py')
         assert MigrateHistory.select().count() == 1
 
     # after merge we have new migration, remove it for cleanup purposes
