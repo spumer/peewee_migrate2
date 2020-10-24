@@ -37,13 +37,11 @@ But ``klen`` don't support project for a long time.
 
 To fix critical issues project was forked and development continued.
 
-All previous compatibilities will be preserved.
-
 
 Requirements
 =============
 
-- python >= 3.5
+- python >= 3.6
 - peewee >= 3.3.1
 
 Dependency Note
