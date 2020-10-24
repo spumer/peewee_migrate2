@@ -15,12 +15,16 @@ def migrations_dir():
 @pytest.fixture(params=['sqlite', 'postgresql'])
 def database(request):
     if request.param == 'sqlite':
-        return playhouse.db_url.connect('sqlite:///:memory:')
+        db = playhouse.db_url.connect('sqlite:///:memory:')
     else:
         dsn = os.getenv('POSTGRES_DSN')
         if not dsn:
             raise pytest.skip('Postgres not found')
-        return playhouse.db_url.connect(dsn)
+        db = playhouse.db_url.connect(dsn)
+
+    with db.atomic():
+        yield db
+        db.rollback()
 
 
 @pytest.fixture()
