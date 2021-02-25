@@ -27,6 +27,11 @@ class SchemaMigrator(ScM):
             return MySQLMigrator(database)
         return super(SchemaMigrator, cls).from_database(database)
 
+    @operation
+    def select_schema(self, schema):
+        """Select database schema"""
+        raise NotImplementedError()
+
     def drop_table(self, model, cascade=True):
         return lambda: model.drop_table(cascade=cascade)
 
@@ -75,6 +80,11 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 
     """Support the migrations in postgresql."""
 
+    @operation
+    def select_schema(self, schema):
+        """Select database schema"""
+        return self.set_search_path(schema)
+
     def alter_change_column(self, table, column_name, field):
         """Support change columns."""
         context = super(PostgresqlMigrator, self).alter_change_column(table, column_name, field)
@@ -102,7 +112,9 @@ def get_model(method):
     @wraps(method)
     def wrapper(migrator, model, *args, **kwargs):
         if isinstance(model, str):
-            return method(migrator, migrator.orm[model], *args, **kwargs)
+            model = migrator.orm[model]
+
+        model._meta.schema = migrator.schema
         return method(migrator, model, *args, **kwargs)
     return wrapper
 
@@ -111,18 +123,22 @@ class Migrator(object):
 
     """Provide migrations."""
 
-    def __init__(self, database):
+    def __init__(self, database, schema=None):
         """Initialize the migrator."""
         if isinstance(database, pw.Proxy):
             database = database.obj
 
         self.database = database
+        self.schema = schema
         self.orm = dict()
         self.ops = list()
         self.migrator = SchemaMigrator.from_database(self.database)
 
     def run(self):
         """Run operations."""
+        if self.schema:
+            self.ops.insert(0, self.migrator.select_schema(self.schema))
+
         for op in self.ops:
             if isinstance(op, Operation):
                 LOGGER.info("%s %s", op.method, op.args)
