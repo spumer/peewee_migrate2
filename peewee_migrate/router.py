@@ -65,7 +65,7 @@ class BaseRouter(object):
     @cached_property
     def migrator(self):
         """Create migrator and setup it with fake migrations."""
-        migrator = Migrator(self.database)
+        migrator = Migrator(self.database, self.schema)
         for name in self.done:
             self.run_one(name, migrator)
         return migrator

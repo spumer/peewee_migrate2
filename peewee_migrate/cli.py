@@ -14,7 +14,7 @@ VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
 
 
-def get_router(directory, database, verbose=0):
+def get_router(directory, database, schema=None, verbose=0):
     from peewee_migrate import LOGGER
     from peewee_migrate.compat import exec_in
     from peewee_migrate.router import Router
@@ -22,7 +22,7 @@ def get_router(directory, database, verbose=0):
     logging_level = VERBOSE[verbose]
     config = {}
     migrate_table = 'migratehistory'
-    ignore = schema = None
+    ignore = None
     try:
         with open(os.path.join(directory, 'conf.py')) as cfg:
             exec_in(cfg.read(), config, config)
@@ -77,8 +77,10 @@ def cli():
 )
 @click.option('--database', default=None, help='Database connection')
 @click.option('--directory', default='migrations', help='Directory where migrations are stored')
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def makemigrations(name=None, database=None, auto=True, auto_source=False, directory=None, verbose=None):
+def makemigrations(name=None, database=None, auto=True, auto_source=False, directory=None,
+                   schema=None, verbose=None):
     """Create a migration automatically
 
     Similar to `create` command, but `auto` is True by default, and `name` not required
@@ -86,7 +88,7 @@ def makemigrations(name=None, database=None, auto=True, auto_source=False, direc
     if name is None:
         name = 'auto_{0:%Y%m%d_%H%M}'.format(datetime.datetime.now())
 
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     if auto and auto_source:
         auto = auto_source
     router.create(name, auto=auto)
@@ -97,10 +99,11 @@ def makemigrations(name=None, database=None, auto=True, auto_source=False, direc
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('--fake', is_flag=True, default=False, help="Run migration as fake.")
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
+def migrate(name=None, database=None, directory=None, schema=None, verbose=None, fake=False):
     """Migrate database."""
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     migrations = router.run(name, fake=fake)
     if migrations:
         click.echo('Migrations completed: %s' % ', '.join(migrations))
@@ -116,10 +119,12 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
     "Current directory will be recursively scanned by default."))
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def create(name, database=None, auto=False, auto_source=False, directory=None, verbose=None):
+def create(name, database=None, auto=False, auto_source=False, directory=None, schema=None,
+           verbose=None):
     """Create a migration."""
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     if auto and auto_source:
         auto = auto_source
     router.create(name, auto=auto)
@@ -137,20 +142,21 @@ def create(name, database=None, auto=False, auto_source=False, directory=None, v
 @click.option('--directory', 
               default='migrations', 
               help="Directory where migrations are stored")
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def rollback(name, count, database=None, directory=None, verbose=None):
+def rollback(name, count, database=None, directory=None, schema=None, verbose=None):
     """
     Rollback a migration with given name or number of last migrations 
     with given --count option as integer number
     """
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     if not name:
         if len(router.done) < count:
             raise RuntimeError(
                 'Unable to rollback %s migrations from %s: %s' %
                 (count, len(router.done), router.done))
         for _ in range(count):
-            router = get_router(directory, database, verbose)
+            router = get_router(directory, database, schema, verbose)
             name = router.done[-1]
             router.rollback(name)
     else:
@@ -160,10 +166,11 @@ def rollback(name, count, database=None, directory=None, verbose=None):
 @cli.command()
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def list(database=None, directory=None, verbose=None):
+def list(database=None, directory=None, schema=None, verbose=None):
     """List migrations."""
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     click.echo('Migrations are done:')
     click.echo('\n'.join(router.done))
     click.echo('')
@@ -174,8 +181,9 @@ def list(database=None, directory=None, verbose=None):
 @cli.command()
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('--schema', default=None, help='Database schema')
 @click.option('-v', '--verbose', count=True)
-def merge(database=None, directory=None, verbose=None):
+def merge(database=None, directory=None, schema=None, verbose=None):
     """Merge migrations into one."""
-    router = get_router(directory, database, verbose)
+    router = get_router(directory, database, schema, verbose)
     router.merge()
