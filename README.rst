@@ -101,6 +101,7 @@ Create migration: ::
         --auto-source           TEXT  Set to python module path for changes autoscan (e.g. 'package.models'). Current directory will be recursively scanned by default.
         --database              TEXT  Database connection
         --directory             TEXT  Directory where migrations are stored
+        --schema                TEXT  Database schema
         -v, --verbose
         --help                        Show this message and exit.
 
@@ -113,11 +114,12 @@ Run migrations: ::
         Run migrations.
 
     Options:
-        --name TEXT       Select migration
-        --database TEXT   Database connection
-        --directory TEXT  Directory where migrations are stored
+        --name                  TEXT  Select migration
+        --database              TEXT  Database connection
+        --directory             TEXT  Directory where migrations are stored
+        --schema                TEXT  Database schema
         -v, --verbose
-        --help            Show this message and exit.
+        --help                        Show this message and exit.
 
 Auto create migration: ::
 
@@ -140,6 +142,7 @@ Auto create migration: ::
                           scanned by default.
         --database TEXT     Database connection
         --directory TEXT    Directory where migrations are stored
+        --schema                TEXT  Database schema
         -v, --verbose
         --help              Show this message and exit.
 
