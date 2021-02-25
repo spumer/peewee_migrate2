@@ -127,3 +127,29 @@ def test_migrator_postgres(_mock_connection):
     migrator.change_fields('user', name=pw.TextField())
     migrator.run()
     assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in database.cursor().queries
+
+
+def test_migrator_schema(_mock_connection):
+    import peewee as pw
+    from playhouse.db_url import connect
+    from peewee_migrate import Migrator
+
+    database = connect('postgres:///fake')
+    schema_name = 'test_schema'
+    migrator = Migrator(database, schema=schema_name)
+
+    def has_schema_select_query():
+        return database.cursor().queries[0] == 'SET search_path TO {}'.format(schema_name)
+
+    @migrator.create_table
+    class User(pw.Model):
+        name = pw.CharField()
+        created_at = pw.DateField()
+
+    migrator.run()
+    assert has_schema_select_query()
+
+    migrator.change_fields('user', created_at=pw.DateTimeField())
+    migrator.run()
+    assert has_schema_select_query()
+

@@ -70,4 +70,17 @@ def test_router_compile(tmpdir):
         content = f.read()
         assert 'SQL = pw.SQL' in content
 
+
+def test_router_schema(tmpdir):
+    from peewee_migrate.cli import get_router
+
+    schema_name = 'test'
+    migrations = tmpdir.mkdir('migrations')
+
+    with mock.patch('peewee_migrate.router.BaseRouter.done'):
+        router = get_router(str(migrations), 'postgres:///fake', schema=schema_name)
+
+        assert router.schema == schema_name
+        assert router.migrator.schema == schema_name
+
 # pylama:ignore=W0621
