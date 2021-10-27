@@ -286,6 +286,7 @@ class Migrator(object):
 
     rename_field = rename_column
 
+    @get_model
     def rename_table(self, model, new_name):
         """Rename table in database."""
         old_name = model._meta.table_name
