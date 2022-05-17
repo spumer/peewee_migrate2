@@ -224,7 +224,7 @@ def field_to_params(field, **kwargs):
     params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
     if field.default is not None and \
             not callable(field.default) \
-            and isinstance(field.default, collections.Hashable):
+            and isinstance(field.default, collections.abc.Hashable):
         params['default'] = field.default
 
     params['index'] = field.index and not field.unique, field.unique
