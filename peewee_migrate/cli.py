@@ -70,7 +70,7 @@ def cli():
     ),
 )
 @click.option(
-    '--auto-source', default=False, help=(
+    '--auto-source', default=None, help=(
         "Set to python module path for changes autoscan (e.g. 'package.models'). "
         'Current directory will be recursively scanned by default.'
     ),
@@ -91,7 +91,9 @@ def makemigrations(name=None, database=None, auto=True, auto_source=False, direc
     router = get_router(directory, database, schema, verbose)
     if auto and auto_source:
         auto = auto_source
-    router.create(name, auto=auto)
+    name = router.create(name, auto=auto)
+    if name:
+        click.echo(f'Migration created: {name}')
 
 
 @cli.command()
