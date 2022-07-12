@@ -62,6 +62,16 @@ def test_migrate(dir_option, db_option, migrations_str):
     assert 'Migrations completed: %s' % migrations_str in result.output
 
 
+def test_makemigrations__autosource(dir_option, db_option):
+    result = runner.invoke(cli, [
+        'makemigrations',
+        dir_option,
+        db_option, "--auto-source",
+        "test_autodiscover.some_folder_one"
+    ])
+    assert 'Migration created: 001_auto_' in result.output
+
+
 def test_list(dir_option, db_option, migrations):
     result = runner.invoke(cli, ['list', dir_option, db_option])
     assert 'Migrations are done:\n' in result.output
