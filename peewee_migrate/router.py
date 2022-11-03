@@ -86,7 +86,7 @@ class BaseRouter(object):
                 models = [m for module in modules for m in load_models(module)]
 
             except ImportError:
-                return self.logger.error("Can't import models module: %s", auto)
+                return self.logger.exception("Can't import models module")
 
             if self.ignore:
                 models = [m for m in models if m._meta.name not in self.ignore]
