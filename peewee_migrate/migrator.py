@@ -1,3 +1,7 @@
+import collections
+import typing
+from typing import List, Type, cast
+
 import peewee as pw
 from functools import wraps
 from playhouse.migrate import (
@@ -119,6 +123,91 @@ def get_model(method):
     return wrapper
 
 
+
+class MigrateOperation:
+    def state_forwards(self, migrator: 'Migrator'):
+        """
+        Take the state from the previous migration, and mutate it
+        so that it matches what this migration would perform.
+        """
+
+        raise NotImplementedError
+
+    def database_forwards(self, schema_migrator: 'SchemaMigrator', from_state, to_state):
+        """
+        Perform the mutation on the database schema in the normal
+        (forwards) direction.
+        """
+        raise NotImplementedError
+
+
+class PlayhouseOperation(MigrateOperation):
+    def __init__(self, op: Operation):
+        self.op = op
+
+    def database_forwards(self, migrator, from_state, to_state):
+        assert self.op.migrator == migrator
+        self.op.run()
+
+
+class AddIndex(MigrateOperation):
+    def __init__(self, model_index: pw.ModelIndex):
+        self.index = model_index
+
+    @staticmethod
+    def _resolve_columns(meta: pw.Metadata, field_or_columns: List[str]):
+        return [
+            meta.combined[v].column_name
+            for v in field_or_columns
+        ]
+
+    @classmethod
+    def from_model(cls, model: Type[pw.Model], fields: List[str], options: dict):
+        meta: pw.Metadata = model._meta
+        columns = cls._resolve_columns(meta, fields)
+        # migrator.add_index call make_index_name
+        # ensure our meta will have same name too
+        index = model.index(*columns, name=make_index_name(meta.table_name, columns), **options)
+        return cls(index)
+
+    def database_forwards(self, schema_migrator: 'SchemaMigrator', from_state, to_state):
+        schema_migrator.add_index(model._meta.table_name, columns_, unique=unique)
+
+
+class CreateTable(MigrateOperation):
+    def __init__(self, model: pw.Model):
+        self.model = model
+
+    def state_forwards(self, migrator: 'Migrator'):
+        migrator.orm[self.model._meta.table_name] = self.model
+        self.model._meta.database = migrator.database  # without it we can't run `model.create_table`
+
+    def database_forwards(self, schema_editor, from_state, to_state):
+        self.model.create_table()
+
+
+class Migration:
+    def __init__(self, schema_migrator, schema=None):
+        self.ops: typing.List[MigrateOperation] = []
+        self.schema_migrator = schema_migrator
+
+        if schema:
+            self.append(schema_migrator.select_schema(schema))
+
+    def append(self, op):
+        if isinstance(op, MigrateOperation):
+            self.ops.append(op)
+        elif isinstance(op, Operation):
+            self.ops.append(PlayhouseOperation(op))
+        else:
+            raise NotImplementedError(type(op))
+
+    def apply(self):
+        for op in self.ops:
+            op.state_forwards()
+            op.database_forwards(self.schema_migrator, None, None)
+
+
 class Migrator(object):
 
     """Provide migrations."""
@@ -128,23 +217,21 @@ class Migrator(object):
         if isinstance(database, pw.Proxy):
             database = database.obj
 
+        migrator = SchemaMigrator.from_database(database)
+
         self.database = database
         self.schema = schema
         self.orm = dict()
-        self.ops = list()
-        self.migrator = SchemaMigrator.from_database(self.database)
+        self.migration = Migration(migrator, schema)
+        self.migrator = migrator
+
+    @property
+    def ops(self):
+        return self.migration  # backward compatibility
 
     def run(self):
         """Run operations."""
-        if self.schema:
-            self.ops.insert(0, self.migrator.select_schema(self.schema))
-
-        for op in self.ops:
-            if isinstance(op, Operation):
-                LOGGER.info("%s %s", op.method, op.args)
-                op.run()
-            else:
-                op()
+        self.ops.apply()
         self.clean()
 
     def python(self, func, *args, **kwargs):
@@ -157,16 +244,14 @@ class Migrator(object):
 
     def clean(self):
         """Clean the operations."""
-        self.ops = list()
+        raise NotImplementedError  # FIXME: what actually we want to do here?
 
     def create_table(self, model):
         """Create model and table in database.
 
         >> migrator.create_table(model)
         """
-        self.orm[model._meta.table_name] = model
-        model._meta.database = self.database
-        self.ops.append(model.create_table)
+        self.migration.append(CreateTable(model))
         return model
 
     create_model = create_table
@@ -230,13 +315,10 @@ class Migrator(object):
                 continue
 
             if field.unique:
-                index = (field.column_name,), field.unique
-                self.ops.append(self.migrator.add_index(model._meta.table_name, *index))
-                model._meta.indexes.append(index)
+                assert not field.index, "You can't set unique and index together"  # FIXME: Why?
+                self.add_index(model, field.name, unique=field.unique)
             else:
-                index = (field.column_name,), old_field.unique
-                self.ops.append(self.migrator.drop_index(model._meta.table_name, *index))
-                model._meta.indexes.remove(index)
+                self.drop_index(model, field.name)
 
         return model
 
@@ -297,43 +379,47 @@ class Migrator(object):
         return model
 
     @get_model
-    def add_index(self, model, *columns, **kwargs):
+    def add_index(self, model, *fields: str, **kwargs):
         """Create indexes."""
-        unique = kwargs.pop('unique', False)
-        model._meta.indexes.append((columns, unique))
-        columns_ = []
-        for col in columns:
-            field = model._meta.fields.get(col)
+        op = AddIndex.from_model(
+            model, cast(List, fields),
+            options=kwargs,
+        )
 
-            if len(columns) == 1:
-                field.unique = unique
-                field.index = not unique
-
-            if isinstance(field, pw.ForeignKeyField):
-                col = col + '_id'
-
-            columns_.append(col)
-        self.ops.append(self.migrator.add_index(model._meta.table_name, columns_, unique=unique))
+        self.ops.append(op)
         return model
 
     @get_model
-    def drop_index(self, model, *columns):
+    def drop_index(self, model, *fields):
         """Drop indexes."""
-        columns_ = []
-        for col in columns:
-            field = model._meta.fields.get(col)
-            if not field:
-                continue
+        def _to_columns(field_or_columns):
+            return [
+                model._meta.combined[v].column_name
+                for v in field_or_columns
+            ]
 
-            if len(columns) == 1:
-                field.unique = field.index = False
+        columns_ = _to_columns(fields)
+        index_to_drop = model.index(*columns_, name=make_index_name(model._meta.table_name, columns_))
 
-            if isinstance(field, pw.ForeignKeyField):
-                col = col + '_id'
-            columns_.append(col)
-        index_name = make_index_name(model._meta.table_name, columns_)
-        model._meta.indexes = [(cols, _) for (cols, _) in model._meta.indexes if columns != cols]
-        self.ops.append(self.migrator.drop_index(model._meta.table_name, index_name))
+        self.ops.append(self.migrator.drop_index(model._meta.table_name, index_to_drop._name))
+
+        meta_index_pos = None
+        for position, index in enumerate(model._meta.indexes):
+            if not isinstance(index, pw.ModelIndex):
+                assert isinstance(index, (list, tuple))
+                index_parts, unique = index
+                index = model.index(*_to_columns(index_parts), unique=unique)
+
+            if index._name == index_to_drop._name:
+                meta_index_pos = position
+                break
+
+        if meta_index_pos is None:
+            raise NotImplementedError('Index not found in Meta')
+        else:
+            model._meta.indexes = list(model._meta.indexes)
+            model._meta.indexes.pop(meta_index_pos)
+
         return model
 
     @get_model
