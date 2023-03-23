@@ -23,16 +23,15 @@ def get_router(directory, database, schema=None, verbose=0):
     config = {}
     migrate_table = 'migratehistory'
     ignore = None
-    try:
-        with open(os.path.join(directory, 'conf.py')) as cfg:
+    conf_path = os.path.join(directory, 'conf.py')
+    if os.path.exists(conf_path):
+        with open(conf_path) as cfg:
             exec_in(cfg.read(), config, config)
             database = config.get('DATABASE', database)
             ignore = config.get('IGNORE', ignore)
             schema = config.get('SCHEMA', schema)
             migrate_table = config.get('MIGRATE_TABLE', migrate_table)
             logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
-    except IOError:
-        pass
 
     if isinstance(database, string_types):
         database = connect(database)
