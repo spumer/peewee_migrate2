@@ -67,7 +67,7 @@ def test_makemigrations__autosource(dir_option, db_option):
         'makemigrations',
         dir_option,
         db_option, "--auto-source",
-        "test_autodiscover.some_folder_one"
+        "tests.test_autodiscover.some_folder_one"
     ])
     assert 'Migration created: 001_auto_' in result.output
 

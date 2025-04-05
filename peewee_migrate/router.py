@@ -290,8 +290,8 @@ def _import_submodules(package, passed=UNDEFINED):
         passed.add(name)
 
         module = sys.modules.get(name)
-        if module is None:
-            module = loader.find_module(name).load_module(name)
+        if module is None:            
+            module = import_module(name)
 
         modules.append(module)
         if is_pkg:
