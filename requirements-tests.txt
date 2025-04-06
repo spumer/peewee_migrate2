@@ -1,6 +1,6 @@
 -e .
 -r requirements.txt
 
-pytest==6.2.5
+pytest==8.3.5
 psycopg2-binary>=2.8.1
 peewee<3.16
