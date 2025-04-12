@@ -46,6 +46,7 @@ docs/_build
 /_
 /.cache
 .venv
+/venv
 /env
 /.ropeproject
 
