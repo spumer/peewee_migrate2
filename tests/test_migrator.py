@@ -1,16 +1,4 @@
-from unittest import mock
-
-import pytest
-
-
-@pytest.fixture()
-def _mock_connection():
-    """Monkey patch psycopg2 connect"""
-    import psycopg2
-    from .mocks import postgres
-
-    with mock.patch.object(psycopg2, 'connect', postgres.MockConnection):
-        yield
+import logging
 
 
 def test_migrator():
@@ -107,16 +95,17 @@ def test_migrator():
     migrator.run()
 
 
-def test_migrator_postgres(_mock_connection):
+def test_migrator_postgres(caplog):
     """
     Ensure change_fields generates queries and
     does not cause exception
     """
+    caplog.set_level(logging.DEBUG)
     import peewee as pw
     from playhouse.db_url import connect
     from peewee_migrate import Migrator
 
-    database = connect('postgres:///fake')
+    database = connect('postgresql://postgres:postgres@localhost:5432/postgres')
 
     migrator = Migrator(database)
     @migrator.create_table
@@ -129,20 +118,20 @@ def test_migrator_postgres(_mock_connection):
     # Date -> DateTime
     migrator.change_fields('user', created_at=pw.DateTimeField())
     migrator.run()
-    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in database.cursor().queries
+    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in caplog.text
     
     # Char -> Text
     migrator.change_fields('user', name=pw.TextField())
     migrator.run()
-    assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in database.cursor().queries
+    assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in caplog.text
 
 
-def test_migrator_schema(_mock_connection):
+def test_migrator_schema():
     import peewee as pw
     from playhouse.db_url import connect
     from peewee_migrate import Migrator
 
-    database = connect('postgres:///fake')
+    database = connect('postgresql://postgres:postgres@localhost:5432/postgres')
     schema_name = 'test_schema'
     migrator = Migrator(database, schema=schema_name)
 
