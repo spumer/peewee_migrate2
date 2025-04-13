@@ -1,8 +1,7 @@
 """ Tests for `peewee_migrate` module. """
 import os
 
-import mock
-import peewee as pw
+from unittest import mock
 
 
 def test_router_run_already_applied_ok(router):
