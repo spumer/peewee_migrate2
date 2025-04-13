@@ -1,8 +1,12 @@
-import logging
+import peewee as pw
+from peewee_migrate import Migrator
+import pytest
+
+from tests.conftest import POSTGRES_DSN
 
 
 def test_migrator():
-    import peewee as pw
+    
     from playhouse.db_url import connect
     from peewee_migrate import Migrator
 
@@ -95,19 +99,33 @@ def test_migrator():
     migrator.run()
 
 
-def test_migrator_postgres(caplog):
+@pytest.fixture()
+def patched_pg_db():
+    class PatchedPgDatabase(pw.PostgresqlDatabase):
+        queries = []
+
+        def clear_queries(self):
+            self.queries = []
+
+        def execute_sql(self, sql, params=None, commit=None):
+            self.queries.append(sql)
+            return super().execute_sql(sql, params, commit)
+
+    db = PatchedPgDatabase(POSTGRES_DSN)
+    yield db
+    db.close()
+
+
+def test_migrator_postgres(patched_pg_db):
     """
     Ensure change_fields generates queries and
     does not cause exception
     """
-    caplog.set_level(logging.DEBUG)
     import peewee as pw
-    from playhouse.db_url import connect
     from peewee_migrate import Migrator
 
-    database = connect('postgresql://postgres:postgres@localhost:5432/postgres')
 
-    migrator = Migrator(database)
+    migrator = Migrator(patched_pg_db)
     @migrator.create_table
     class User(pw.Model):
         name = pw.CharField()
@@ -118,35 +136,33 @@ def test_migrator_postgres(caplog):
     # Date -> DateTime
     migrator.change_fields('user', created_at=pw.DateTimeField())
     migrator.run()
-    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in caplog.text
+    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in patched_pg_db.queries
     
     # Char -> Text
     migrator.change_fields('user', name=pw.TextField())
     migrator.run()
-    assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in caplog.text
+    assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in patched_pg_db.queries
 
+def test_migrator_schema(patched_pg_db):    
 
-def test_migrator_schema():
-    import peewee as pw
-    from playhouse.db_url import connect
-    from peewee_migrate import Migrator
-
-    database = connect('postgresql://postgres:postgres@localhost:5432/postgres')
     schema_name = 'test_schema'
-    migrator = Migrator(database, schema=schema_name)
+    patched_pg_db.execute_sql("CREATE SCHEMA IF NOT EXISTS test_schema;")
+    
+    migrator = Migrator(patched_pg_db, schema=schema_name)
+    
 
-    def has_schema_select_query():
-        return database.cursor().queries[0] == 'SET search_path TO {}'.format(schema_name)
-
+    patched_pg_db.clear_queries()
     @migrator.create_table
     class User(pw.Model):
         name = pw.CharField()
         created_at = pw.DateField()
-
     migrator.run()
-    assert has_schema_select_query()
 
+    assert patched_pg_db.queries[0] == 'SET search_path TO {}'.format(schema_name)
+
+
+    patched_pg_db.clear_queries()
     migrator.change_fields('user', created_at=pw.DateTimeField())
     migrator.run()
-    assert has_schema_select_query()
 
+    assert patched_pg_db.queries[0] == 'SET search_path TO {}'.format(schema_name)
