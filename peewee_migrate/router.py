@@ -5,7 +5,7 @@ import typing
 from importlib import import_module
 
 import pkgutil
-import mock
+from unittest import mock
 import peewee as pw
 from cached_property import cached_property
 
