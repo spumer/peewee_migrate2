@@ -1,10 +1,11 @@
-import os
 import pathlib
 
 import playhouse.db_url
 import pytest
 import peewee as pw
 
+
+POSTGRES_DSN = "postgresql://postgres:postgres@localhost:5432/postgres"
 
 @pytest.fixture()
 def migrations_dir():
@@ -17,10 +18,7 @@ def database(request):
     if request.param == 'sqlite':
         db = playhouse.db_url.connect('sqlite:///:memory:')
     else:
-        dsn = os.getenv('POSTGRES_DSN')
-        if not dsn:
-            raise pytest.skip('Postgres not found')
-        db = playhouse.db_url.connect(dsn)
+        db = playhouse.db_url.connect(POSTGRES_DSN)
 
     with db.atomic():
         yield db
