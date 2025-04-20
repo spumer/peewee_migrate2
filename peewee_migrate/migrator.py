@@ -104,6 +104,10 @@ class SqliteMigrator(SchemaMigrator, SqM):
     def alter_change_column(self, table, column, field):
         """Support change columns."""
         return self._update_column(table, column, lambda a, b: b)
+    
+    def drop_column(self, table, column_name, cascade=True, legacy=True, **kwargs):
+        """drop_column will not work for FK so we should use the legacy version"""
+        return super(SqliteMigrator, self).drop_column(table, column_name, cascade, legacy, **kwargs)
 
 
 def get_model(method):
