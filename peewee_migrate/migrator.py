@@ -123,6 +123,49 @@ def get_model(method):
     return wrapper
 
 
+class MigrateOperation:
+    def state_forwards(self, migrator: 'Migrator'):
+        """
+        Take the state from the previous migration, and mutate it
+        so that it matches what this migration would perform.
+        """
+
+        raise NotImplementedError
+
+    def database_forwards(self, schema_migrator: 'SchemaMigrator'):
+        """
+        Perform the mutation on the database schema in the normal
+        (forwards) direction.
+        """
+        raise NotImplementedError
+    
+
+class CreateTable(MigrateOperation):
+    def __init__(self, model: pw.Model):
+        self.model = model
+
+    def state_forwards(self, migrator: 'Migrator'):
+        migrator.orm[self.model._meta.table_name] = self.model
+        self.model._meta.database = migrator.database  # without it we can't run `model.create_table`
+
+    def database_forwards(self):
+        self.model.create_table()
+
+
+class Migration:
+    def __init__(self, migrator: 'Migrator'):
+        self.migrator = migrator
+        self.ops: list[MigrateOperation] = []
+
+    def append(self, op):
+        self.ops.append(op)
+
+    def apply(self):
+        for op in self.ops:
+            op.state_forwards(self.migrator)
+            op.database_forwards(self.migrator.schema_migrator)
+    
+
 class Migrator(object):
 
     """Provide migrations."""
@@ -136,7 +179,13 @@ class Migrator(object):
         self.schema = schema
         self.orm = dict()
         self.ops = list()
-        self.migrator = SchemaMigrator.from_database(self.database)
+        self.schema_migrator = SchemaMigrator.from_database(self.database)
+        self.migration = Migration(self.migrator)
+
+
+    @property
+    def migrator(self):
+        return self.schema_migrator
 
     def run(self):
         """Run operations."""
@@ -168,9 +217,7 @@ class Migrator(object):
 
         >> migrator.create_table(model)
         """
-        self.orm[model._meta.table_name] = model
-        model._meta.database = self.database
-        self.ops.append(model.create_table)
+        self.ops.append(CreateTable(model))
         return model
 
     create_model = create_table
