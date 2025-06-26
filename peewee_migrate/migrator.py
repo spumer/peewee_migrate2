@@ -12,6 +12,64 @@ from playhouse.migrate import (
 from peewee_migrate import LOGGER
 
 
+
+class MigrateOperation:
+    def state_forwards(self, migrator: 'Migrator') -> None:
+        """
+        Take the state from the previous migration, and mutate it
+        so that it matches what this migration would perform.
+        """
+
+        raise NotImplementedError
+
+    def database_forwards(self) -> None:
+        """
+        Perform the mutation on the database schema in the normal
+        (forwards) direction.
+        """
+        raise NotImplementedError
+
+
+class CreateTable(MigrateOperation):
+    def __init__(self, model: pw.Model) -> None:
+        self.model = model
+
+    def state_forwards(self, migrator: 'Migrator') -> None:
+        migrator.orm[self.model._meta.table_name] = self.model
+        self.model._meta.database = migrator.database  # without it we can't run `model.create_table`
+
+    def database_forwards(self):
+        self.model.create_table()
+
+
+class Migration:
+    def __init__(self, migrator: 'Migrator') -> None:
+        self.migrator = migrator
+        self.ops: list[MigrateOperation] = []
+
+    def append(self, op: MigrateOperation) -> None:
+        if isinstance(op, MigrateOperation):
+            op.state_forwards(self.migrator)
+        self.ops.append(op)
+
+    def apply_legacy_op(self, op) -> None:
+        if isinstance(op, Operation):
+            LOGGER.info("%s %s", op.method, op.args)
+            op.run()
+        else:
+            op()
+
+    def apply(self) -> None:
+        for op in self.ops:
+            if isinstance(op, MigrateOperation):
+                op.database_forwards()
+            else:
+                self.apply_legacy_op(op)
+
+    def clean(self) -> None:
+        self.ops = list()
+
+
 class SchemaMigrator(ScM):
 
     """Implement migrations."""
@@ -135,20 +193,26 @@ class Migrator(object):
         self.database = database
         self.schema = schema
         self.orm = dict()
-        self.ops = list()
-        self.migrator = SchemaMigrator.from_database(self.database)
+        self.schema_migrator = SchemaMigrator.from_database(self.database)
+
+
+        self.migration = Migration(self)
+
+    @property
+    def ops(self) -> Migration:
+        # for backward compatibility
+        return self.migration  # backward compatibility
+    
+    @property
+    def migrator(self) -> SchemaMigrator: 
+        # for backward compatibility
+        return self.schema_migrator 
 
     def run(self):
         """Run operations."""
         if self.schema:
-            self.ops.insert(0, self.migrator.select_schema(self.schema))
-
-        for op in self.ops:
-            if isinstance(op, Operation):
-                LOGGER.info("%s %s", op.method, op.args)
-                op.run()
-            else:
-                op()
+            self.migration.ops.insert(0, self.migrator.select_schema(self.schema))
+        self.migration.apply()
         self.clean()
 
     def python(self, func, *args, **kwargs):
@@ -161,16 +225,14 @@ class Migrator(object):
 
     def clean(self):
         """Clean the operations."""
-        self.ops = list()
+        self.migration.clean()
 
     def create_table(self, model):
         """Create model and table in database.
 
         >> migrator.create_table(model)
         """
-        self.orm[model._meta.table_name] = model
-        model._meta.database = self.database
-        self.ops.append(model.create_table)
+        self.ops.append(CreateTable(model))
         return model
 
     create_model = create_table
