@@ -1,11 +1,22 @@
 import peewee as pw
 from peewee_migrate import Migrator
 import pytest
+from typing import Generator, Any
 
 from tests.conftest import POSTGRES_DSN
 
+class PatchedPgDatabase(pw.PostgresqlDatabase):
+    queries = []
 
-def test_migrator():
+    def clear_queries(self):
+        self.queries = []
+
+    def execute_sql(self, sql, params=None, commit=None):
+        self.queries.append(sql)
+        return super().execute_sql(sql, params, commit)
+
+
+def test_migrator_sqlite_common():
     
     from playhouse.db_url import connect
     from peewee_migrate import Migrator
@@ -98,32 +109,34 @@ def test_migrator():
     migrator.rename_table("new_name", "order")
     migrator.run()
 
-
 @pytest.fixture()
-def patched_pg_db():
-    class PatchedPgDatabase(pw.PostgresqlDatabase):
-        queries = []
-
-        def clear_queries(self):
-            self.queries = []
-
-        def execute_sql(self, sql, params=None, commit=None):
-            self.queries.append(sql)
-            return super().execute_sql(sql, params, commit)
+def patched_pg_db() -> Generator[PatchedPgDatabase, Any, None]:
 
     db = PatchedPgDatabase(POSTGRES_DSN)
-    yield db
+    with db.transaction() as transaction:
+        yield db
+        transaction.rollback()
     db.close()
 
 
-def test_migrator_postgres(patched_pg_db):
+
+def test_create_table(patched_pg_db: PatchedPgDatabase) -> None:
     """
     Ensure change_fields generates queries and
     does not cause exception
     """
-    import peewee as pw
-    from peewee_migrate import Migrator
+    migrator = Migrator(patched_pg_db)
+    @migrator.create_table
+    class User(pw.Model):
+        name = pw.CharField()
+        created_at = pw.DateField()
+    
+    assert User == migrator.orm['user']
+    migrator.run()
+    assert patched_pg_db.queries == ['CREATE TABLE IF NOT EXISTS "user" ("id" SERIAL NOT NULL PRIMARY KEY, "name" VARCHAR(255) NOT NULL, "created_at" DATE NOT NULL)']
 
+
+def test_change_datetime_field(patched_pg_db: PatchedPgDatabase) -> None:
 
     migrator = Migrator(patched_pg_db)
     @migrator.create_table
@@ -137,11 +150,27 @@ def test_migrator_postgres(patched_pg_db):
     migrator.change_fields('user', created_at=pw.DateTimeField())
     migrator.run()
     assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in patched_pg_db.queries
+
+
+def test_change_text_field(patched_pg_db: PatchedPgDatabase) -> None:
+    """
+    Ensure change_fields generates queries and
+    does not cause exception
+    """
+
+    migrator = Migrator(patched_pg_db)
+    @migrator.create_table
+    class User(pw.Model):
+        name = pw.CharField()
+        created_at = pw.DateField()
+
+    assert User == migrator.orm['user']
     
     # Char -> Text
     migrator.change_fields('user', name=pw.TextField())
     migrator.run()
     assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in patched_pg_db.queries
+
 
 def test_migrator_schema(patched_pg_db):    
 
