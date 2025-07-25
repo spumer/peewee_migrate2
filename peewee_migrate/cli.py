@@ -7,8 +7,6 @@ import sys
 import click
 from playhouse.db_url import connect
 
-from peewee_migrate.compat import string_types
-
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
@@ -16,7 +14,7 @@ CLEAN_RE = re.compile(r'\s+$', re.M)
 
 def get_router(directory, database, schema=None, verbose=0):
     from peewee_migrate import LOGGER
-    from peewee_migrate.compat import exec_in
+    from peewee_migrate.utils import exec_in
     from peewee_migrate.router import Router
 
     logging_level = VERBOSE[verbose]
@@ -33,7 +31,7 @@ def get_router(directory, database, schema=None, verbose=0):
             migrate_table = config.get('MIGRATE_TABLE', migrate_table)
             logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
 
-    if isinstance(database, string_types):
+    if isinstance(database, str):
         database = connect(database)
 
     LOGGER.setLevel(logging_level)
