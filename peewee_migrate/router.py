@@ -11,7 +11,7 @@ from cached_property import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
-from peewee_migrate.compat import string_types, exec_in
+from peewee_migrate.utils import exec_in
 from peewee_migrate.migrator import Migrator
 
 
@@ -257,7 +257,7 @@ class ModuleRouter(BaseRouter):
     def __init__(self, database, migrate_module='migrations', **kwargs):
         super(ModuleRouter, self).__init__(database, **kwargs)
 
-        if isinstance(migrate_module, string_types):
+        if isinstance(migrate_module, str):
             migrate_module = import_module(migrate_module)
 
         self.migrate_module = migrate_module
