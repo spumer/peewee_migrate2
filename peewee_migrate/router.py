@@ -7,7 +7,7 @@ from importlib import import_module
 import pkgutil
 from unittest import mock
 import peewee as pw
-from cached_property import cached_property
+from functools import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
